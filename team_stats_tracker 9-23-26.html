@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Stats Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --blue:#1a56db;
+  --blue-light:#eff4ff;
+  --text:#111827;
+  --text2:#6b7280;
+  --text3:#9ca3af;
+  --border:#e5e7eb;
+  --bg:#f9fafb;
+  --white:#ffffff;
+  --green:#15803d;
+  --green-bg:#f0fdf4;
+  --red:#dc2626;
+  --red-bg:#fef2f2;
+  --amber:#d97706;
+  --amber-bg:#fffbeb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--text);font-size:14px;background:var(--bg);min-height:100vh}
+
+/* ── SETUP ── */
+.setup-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--bg)}
+.setup-inner{max-width:480px;width:100%}
+.setup-inner h2{font-size:24px;font-weight:700;color:var(--text);margin-bottom:.25rem}
+.setup-inner .tagline{font-size:14px;color:var(--text2);margin-bottom:2rem}
+.setup-label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;display:block}
+.setup-inner input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;color:var(--text);background:var(--white);margin-bottom:1rem;transition:border-color .15s}
+.setup-inner input:focus{outline:none;border-color:var(--blue)}
+.setup-connect-btn{width:100%;padding:11px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.setup-connect-btn:hover{background:#1648c7}
+.setup-connect-btn:disabled{opacity:.6;cursor:not-allowed}
+.setup-divider{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
+.setup-help{font-size:12px;color:var(--text3);line-height:1.7}
+.setup-help code{background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:11px}
+.setup-help a{color:var(--blue);text-decoration:none}
+.log-box{background:#111827;color:#6ee7b7;font-family:monospace;font-size:12px;border-radius:6px;padding:12px;margin-top:1rem;max-height:130px;overflow-y:auto;display:none;line-height:1.7}
+.setup-alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-top:1rem;line-height:1.5;display:none}
+.setup-alert.err{background:var(--red-bg);color:var(--red)}
+.setup-alert.ok{background:var(--green-bg);color:var(--green)}
+
+/* ── APP SHELL ── */
+.app{max-width:900px;margin:0 auto;padding:0}
+
+/* ── HEADER ── */
+.header{padding:1.25rem 2rem;border-bottom:1px solid var(--border);background:var(--white);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+.header-left{display:flex;align-items:center;gap:10px}
+.header-logo{width:32px;height:32px;background:var(--blue);border-radius:7px;display:flex;align-items:center;justify-content:center;color:white;font-size:16px}
+.header-title{font-size:16px;font-weight:700;color:var(--text)}
+.header-right{display:flex;align-items:center;gap:8px}
+.sync-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:4px 10px;border:1px solid var(--border);border-radius:99px;background:var(--white)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;flex-shrink:0}
+.sync-dot.ok{background:#22c55e}
+.sync-dot.err{background:var(--red)}
+.sync-dot.spin{background:var(--amber);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hbtn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--white);color:var(--text2);display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.hbtn:hover{background:var(--bg);color:var(--text)}
+.hbtn.danger{color:var(--red);border-color:var(--border)}
+
+/* ── NAV ── */
+.nav{padding:0 2rem;border-bottom:1px solid var(--border);background:var(--white);display:flex;gap:0}
+.nav-tab{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* ── CONTENT ── */
+.content{padding:2rem;min-height:calc(100vh - 120px)}
+.section{display:none}.section.active{display:block}
+
+/* ── PAGE TITLE ── */
+.page-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:.25rem}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:1.75rem}
+
+/* ── FORMS ── */
+.form-section{margin-bottom:2rem}
+.form-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:560px){.field-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select{padding:9px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--white);transition:border-color .15s;width:100%}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue)}
+.tt{display:flex;align-items:center;gap:8px}
+.tt input{width:72px}
+.tt span{color:var(--text3);font-size:16px}
+
+/* ── TOGGLE ── */
+.toggle-row{display:flex;gap:0;margin-top:2px;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content}
+.toggle-opt{padding:8px 20px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:var(--white);color:var(--text2);transition:all .15s}
+.toggle-opt:not(:last-child){border-right:1px solid var(--border)}
+.toggle-opt.sel{background:var(--blue);color:white}
+
+/* ── SWITCH ── */
+.switch-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2);margin-top:.25rem}
+.sw{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sl{position:absolute;cursor:pointer;inset:0;background:#d1d5db;border-radius:10px;transition:.2s}
+.sl:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+input:checked+.sl{background:var(--blue)}
+input:checked+.sl:before{transform:translateX(16px)}
+
+/* ── ACTIONS ── */
+.action-row{display:flex;gap:10px;margin-top:1.75rem;padding-top:1.5rem;border-top:1px solid var(--border);flex-wrap:wrap}
+.btn{padding:9px 18px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--white);color:var(--text);display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.btn:hover{background:var(--bg)}
+.btn.primary{background:var(--blue);color:white;border-color:var(--blue)}.btn.primary:hover{background:#1648c7}
+.btn.success{background:#166534;color:white;border-color:#166534}.btn.success:hover{background:#14532d}
+.btn.ghost{background:none;border-color:transparent;color:var(--text2)}.btn.ghost:hover{color:var(--text);background:var(--bg)}
+
+/* ── ALERTS ── */
+#alert-area{position:fixed;top:70px;right:1.5rem;z-index:200;max-width:340px}
+.toast{padding:11px 16px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);animation:slideIn .2s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.toast.ok{background:var(--white);border-left:3px solid #22c55e;color:var(--text)}
+.toast.err{background:var(--white);border-left:3px solid var(--red);color:var(--text)}
+.toast.info{background:var(--white);border-left:3px solid var(--blue);color:var(--text)}
+
+/* ── TEAM LIST ── */
+.member-list{margin-top:1.5rem}
+.member-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+.member-row:last-child{border-bottom:none}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--blue);flex-shrink:0}
+.member-name{font-weight:600;font-size:13px;color:var(--text)}
+.member-meta{font-size:12px;color:var(--text3);margin-top:1px}
+.role-pill{display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
+.role-pill.admin{background:var(--blue-light);color:var(--blue)}
+.role-pill.rep{background:#f3f4f6;color:var(--text2)}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:5px;transition:color .15s;font-size:15px;line-height:1}
+.icon-btn:hover{color:var(--red)}
+
+/* ── METRICS STRIP ── */
+.metrics-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:0;margin-bottom:2rem;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--white)}
+.metric-cell{padding:1rem 1.25rem;border-right:1px solid var(--border)}
+.metric-cell:last-child{border-right:none}
+.metric-val{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.metric-lbl{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.3}
+
+/* ── LEADERBOARD ── */
+.lb-controls{display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap}
+.lb-controls select{padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--white);cursor:pointer}
+.lb-table{width:100%}
+.lb-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+.lb-row:last-child{border-bottom:none}
+.lb-rank{font-size:13px;font-weight:700;min-width:32px;color:var(--text3);text-align:center}
+.lb-rank.r1{color:#d97706}.lb-rank.r2{color:#6b7280}.lb-rank.r3{color:#92400e}
+.lb-info{flex:1}
+.lb-name{font-weight:600;font-size:13px}
+.lb-trend{font-size:12px;margin-top:2px}
+.trend-up{color:var(--green)}.trend-dn{color:var(--red)}.trend-eq{color:var(--text3)}
+.lb-score{text-align:right}
+.lb-score .val{font-size:18px;font-weight:700;color:var(--text)}
+.lb-score .lbl{font-size:11px;color:var(--text3);margin-top:1px}
+
+/* ── GOALS ── */
+.goals-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:2rem}
+@media(max-width:600px){.goals-grid{grid-template-columns:1fr}}
+.goals-col-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.goal-field{display:flex;align-items:center;gap:10px;margin-bottom:.75rem}
+.goal-field label{font-size:13px;color:var(--text2);flex:1;min-width:0}
+.goal-field input{width:90px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);text-align:right}
+.goal-field input:focus{outline:none;border-color:var(--blue)}
+.goal-field .pct{font-size:12px;font-weight:600;min-width:36px;text-align:right;color:var(--text3)}
+.prog-section{margin-top:2rem}
+.prog-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:1.25rem}
+.prog-item{margin-bottom:1.25rem}
+.prog-label-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.prog-label{color:var(--text2)}
+.prog-nums{color:var(--text);font-weight:500}
+.prog-nums span{color:var(--text3);font-weight:400}
+.prog-bar{height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s}
+.prog-fill.ok{background:#22c55e}.prog-fill.warn{background:var(--amber)}.prog-fill.dan{background:var(--red)}
+
+/* ── REPORTS ── */
+.report-controls{display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+.report-controls select,.report-controls input[type=date]{padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--white)}
+.report-controls .spacer{flex:1}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{text-align:left;padding:10px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:2px solid var(--border);white-space:nowrap}
+.data-table td{padding:11px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:#fafafa}
+.status-pill{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px}
+.status-pill.yes{background:var(--green-bg);color:var(--green)}
+.status-pill.no{background:#f3f4f6;color:var(--text2)}
+.status-pill.nwd{background:var(--amber-bg);color:var(--amber)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
+.empty-state{padding:3rem;text-align:center;color:var(--text3);font-size:13px}
+
+/* ── MODALS ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:10px;padding:1.75rem;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:1.5rem}
+.modal-actions{display:flex;gap:10px;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.del-modal{max-width:360px;text-align:center}
+.del-icon{font-size:44px;color:var(--red);margin-bottom:.75rem}
+.del-title{font-size:17px;font-weight:700;margin-bottom:.5rem}
+.del-sub{font-size:13px;color:var(--text2);margin-bottom:1.5rem}
+.del-actions{display:flex;gap:10px;justify-content:center}
+</style>
+</head>
+<body>
+
+<!-- ══════════ SETUP ══════════ -->
+<div class="setup-wrap" id="setup-screen">
+  <div class="setup-inner">
+    <h2>Team Stats Tracker</h2>
+    <p class="tagline">Shared data across every PC via Google Drive.</p>
+
+    <div id="setup-alert" class="setup-alert"></div>
+
+    <label class="setup-label">Google OAuth Client ID</label>
+    <input type="text" id="setup-client-id" placeholder="000000000000-xxxx.apps.googleusercontent.com">
+
+    <label class="setup-label">Drive file name</label>
+    <input type="text" id="setup-filename" value="team_stats_data.json">
+
+    <button class="setup-connect-btn" id="connect-btn" onclick="startConnect()">
+      <i class="ti ti-brand-google"></i> Connect to Google Drive
+    </button>
+
+    <div id="setup-log" class="log-box"></div>
+
+    <hr class="setup-divider">
+    <div class="setup-help">
+      <strong style="color:#6b7280">Quick setup:</strong><br>
+      1. <a href="https://console.developers.google.com" target="_blank">console.developers.google.com</a> → new project → enable Google Drive API<br>
+      2. Create OAuth 2.0 Client ID (Web app) → add <code>http://localhost:8080</code> as authorized origin<br>
+      3. Paste Client ID above · Open app via the .bat launcher · Click Connect
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div id="main-app" style="display:none">
+  <div id="alert-area"></div>
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo"><i class="ti ti-chart-bar"></i></div>
+      <span class="header-title">Team Stats Tracker</span>
+    </div>
+    <div class="header-right">
+      <div class="sync-pill">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">Connecting…</span>
+      </div>
+      <button class="hbtn" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync</button>
+      <button class="hbtn danger" onclick="signOut()"><i class="ti ti-logout"></i> Sign out</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-tab active" onclick="sw('log')"><i class="ti ti-edit"></i> Log Activity</button>
+    <button class="nav-tab" onclick="sw('team')"><i class="ti ti-users"></i> Team</button>
+    <button class="nav-tab" onclick="sw('lb')"><i class="ti ti-trophy"></i> Leaderboard</button>
+    <button class="nav-tab" onclick="sw('goals')"><i class="ti ti-target"></i> Goals</button>
+    <button class="nav-tab" onclick="sw('reports')"><i class="ti ti-chart-bar"></i> Reports</button>
+  </nav>
+
+  <div class="content">
+
+    <!-- LOG -->
+    <div id="sec-log" class="section active">
+      <div class="page-title">Log Daily Activity</div>
+      <div class="page-sub">Record stats for a team member.</div>
+
+      <div class="form-section">
+        <div class="form-section-title">Who &amp; When</div>
+        <div class="field-grid">
+          <div class="field"><label>Team member</label><select id="log-rep"></select></div>
+          <div class="field"><label>Date</label><input type="date" id="log-date"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Activity</div>
+        <div class="field-grid">
+          <div class="field"><label>Dials</label><input type="number" id="log-dials" placeholder="0" min="0"></div>
+          <div class="field"><label>New conversations (&gt;10 mins)</label><input type="number" id="log-convos" placeholder="0" min="0"></div>
+          <div class="field"><label>Total quoted households</label><input type="number" id="log-quotedHH" placeholder="0" min="0"></div>
+          <div class="field"><label>Total households sold</label><input type="number" id="log-soldHH" placeholder="0" min="0"></div>
+          <div class="field"><label>Total premium sold ($)</label><input type="number" id="log-premium" placeholder="0" min="0"></div>
+          <div class="field"><label>Total life conversations</label><input type="number" id="log-lifeconvos" placeholder="0" min="0"></div>
+          <div class="field"><label>Total life appointments</label><input type="number" id="log-lifeappts" placeholder="0" min="0"></div>
+          <div class="field">
+            <label>Talk time</label>
+            <div class="tt">
+              <input type="number" id="log-hh" placeholder="hh" min="0" max="23">
+              <span>:</span>
+              <input type="number" id="log-mm" placeholder="mm" min="0" max="59">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Other</div>
+        <div class="field" style="margin-bottom:1rem">
+          <label>Follow-ups completed</label>
+          <div class="toggle-row" style="margin-top:6px">
+            <button class="toggle-opt sel" id="fu-yes" onclick="setFU('yes')">Yes</button>
+            <button class="toggle-opt" id="fu-no" onclick="setFU('no')">No</button>
+          </div>
+        </div>
+        <div class="switch-row">
+          <label class="sw"><input type="checkbox" id="log-nwd"><span class="sl"></span></label>
+          Mark as non-working day
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn primary" onclick="submitLog()"><i class="ti ti-device-floppy"></i> Submit activity</button>
+        <button class="btn ghost" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+
+    <!-- TEAM -->
+    <div id="sec-team" class="section">
+      <div class="page-title">Team</div>
+      <div class="page-sub">Manage your team members.</div>
+
+      <div class="form-section">
+        <div class="form-section-title">Add team member</div>
+        <div class="field-grid">
+          <div class="field"><label>First name</label><input type="text" id="rep-first" placeholder="Jane"></div>
+          <div class="field"><label>Last name</label><input type="text" id="rep-last" placeholder="Smith"></div>
+          <div class="field"><label>Role</label>
+            <select id="rep-role"><option value="rep">Rep</option><option value="admin">Admin / Manager</option></select>
+          </div>
+          <div class="field"><label>Email (optional)</label><input type="text" id="rep-email" placeholder="jane@example.com"></div>
+        </div>
+        <div class="action-row">
+          <button class="btn primary" onclick="addRep()"><i class="ti ti-plus"></i> Add member</button>
+        </div>
+      </div>
+
+      <div class="form-section-title" style="margin-bottom:1rem">Members</div>
+      <div id="rep-list"></div>
+    </div>
+
+    <!-- LEADERBOARD -->
+    <div id="sec-lb" class="section">
+      <div class="page-title">Leaderboard</div>
+      <div class="page-sub">See who's leading the team.</div>
+      <div class="lb-controls">
+        <select id="lb-metric" onchange="renderLB()">
+          <option value="dials">Dials</option>
+          <option value="convos">New conversations (&gt;10 mins)</option>
+          <option value="quotedHH">Total quoted households</option>
+          <option value="soldHH">Total households sold</option>
+          <option value="premium">Total premium sold ($)</option>
+          <option value="lifeconvos">Total life conversations</option>
+          <option value="lifeappts">Total life appointments</option>
+        </select>
+        <select id="lb-period" onchange="renderLB()">
+          <option value="week">This week</option>
+          <option value="month">This month</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+      <div id="lb-list"></div>
+    </div>
+
+    <!-- GOALS -->
+    <div id="sec-goals" class="section">
+      <div class="page-title">Goals &amp; Targets</div>
+      <div class="page-sub">Set weekly and monthly targets and track team progress.</div>
+
+      <div class="goals-grid">
+        <div>
+          <div class="goals-col-title">Weekly targets</div>
+          <div class="goal-field"><label>Dials</label><input type="number" id="gw-dials" placeholder="0" min="0"><span class="pct" id="gw-dials-pct"></span></div>
+          <div class="goal-field"><label>Conversations (&gt;10 min)</label><input type="number" id="gw-convos" placeholder="0" min="0"><span class="pct" id="gw-convos-pct"></span></div>
+          <div class="goal-field"><label>Quoted households</label><input type="number" id="gw-quotedHH" placeholder="0" min="0"><span class="pct" id="gw-quotedHH-pct"></span></div>
+          <div class="goal-field"><label>Households sold</label><input type="number" id="gw-soldHH" placeholder="0" min="0"><span class="pct" id="gw-soldHH-pct"></span></div>
+          <div class="goal-field"><label>Premium sold ($)</label><input type="number" id="gw-premium" placeholder="0" min="0"><span class="pct" id="gw-premium-pct"></span></div>
+          <div class="goal-field"><label>Life conversations</label><input type="number" id="gw-lifeconvos" placeholder="0" min="0"><span class="pct" id="gw-lifeconvos-pct"></span></div>
+          <div class="goal-field"><label>Life appointments</label><input type="number" id="gw-lifeappts" placeholder="0" min="0"><span class="pct" id="gw-lifeappts-pct"></span></div>
+        </div>
+        <div>
+          <div class="goals-col-title">Monthly targets</div>
+          <div class="goal-field"><label>Dials</label><input type="number" id="gm-dials" placeholder="0" min="0"><span class="pct" id="gm-dials-pct"></span></div>
+          <div class="goal-field"><label>Conversations (&gt;10 min)</label><input type="number" id="gm-convos" placeholder="0" min="0"><span class="pct" id="gm-convos-pct"></span></div>
+          <div class="goal-field"><label>Quoted households</label><input type="number" id="gm-quotedHH" placeholder="0" min="0"><span class="pct" id="gm-quotedHH-pct"></span></div>
+          <div class="goal-field"><label>Households sold</label><input type="number" id="gm-soldHH" placeholder="0" min="0"><span class="pct" id="gm-soldHH-pct"></span></div>
+          <div class="goal-field"><label>Premium sold ($)</label><input type="number" id="gm-premium" placeholder="0" min="0"><span class="pct" id="gm-premium-pct"></span></div>
+          <div class="goal-field"><label>Life conversations</label><input type="number" id="gm-lifeconvos" placeholder="0" min="0"><span class="pct" id="gm-lifeconvos-pct"></span></div>
+          <div class="goal-field"><label>Life appointments</label><input type="number" id="gm-lifeappts" placeholder="0" min="0"><span class="pct" id="gm-lifeappts-pct"></span></div>
+        </div>
+      </div>
+      <div class="action-row" style="margin-top:0;padding-top:1.25rem;border-top:1px solid var(--border)">
+        <button class="btn primary" onclick="saveGoals()"><i class="ti ti-device-floppy"></i> Save targets</button>
+      </div>
+
+      <div class="prog-section">
+        <div class="prog-title">This week's progress</div>
+        <div id="goal-prog-w"></div>
+        <div class="prog-title" style="margin-top:2rem">This month's progress</div>
+        <div id="goal-prog-m"></div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="sec-reports" class="section">
+      <div class="page-title">Reports</div>
+      <div class="page-sub">Filter and export team activity data.</div>
+
+      <div class="report-controls">
+        <select id="rpt-rep"><option value="">All reps</option></select>
+        <input type="date" id="rpt-from">
+        <input type="date" id="rpt-to">
+        <button class="btn" onclick="loadReport()"><i class="ti ti-refresh"></i> Refresh</button>
+        <div class="spacer"></div>
+        <button class="btn" onclick="exportCSV()"><i class="ti ti-file-text"></i> CSV</button>
+        <button class="btn success" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i> Export Excel</button>
+      </div>
+
+      <div class="metrics-strip" id="rpt-metrics"></div>
+
+      <div class="tbl-wrap">
+        <div id="rpt-table"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main-app -->
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Entry</div>
+    <input type="hidden" id="edit-id">
+    <div class="field-grid" style="margin-bottom:1rem">
+      <div class="field"><label>Date</label><input type="date" id="edit-date"></div>
+      <div class="field"><label>Dials</label><input type="number" id="edit-dials" min="0"></div>
+      <div class="field"><label>New conversations (&gt;10 mins)</label><input type="number" id="edit-convos" min="0"></div>
+      <div class="field"><label>Total quoted households</label><input type="number" id="edit-quotedHH" min="0"></div>
+      <div class="field"><label>Total households sold</label><input type="number" id="edit-soldHH" min="0"></div>
+      <div class="field"><label>Total premium sold ($)</label><input type="number" id="edit-premium" min="0"></div>
+      <div class="field"><label>Total life conversations</label><input type="number" id="edit-lifeconvos" min="0"></div>
+      <div class="field"><label>Total life appointments</label><input type="number" id="edit-lifeappts" min="0"></div>
+      <div class="field"><label>Talk time</label>
+        <div class="tt"><input type="number" id="edit-hh" min="0" max="23" placeholder="hh"><span>:</span><input type="number" id="edit-mm" min="0" max="59" placeholder="mm"></div>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Follow-ups</label>
+      <div class="toggle-row" style="margin-top:6px">
+        <button class="toggle-opt" id="efu-yes" onclick="setEFU('yes')">Yes</button>
+        <button class="toggle-opt" id="efu-no" onclick="setEFU('no')">No</button>
+      </div>
+    </div>
+    <div class="switch-row" style="margin-bottom:.5rem">
+      <label class="sw"><input type="checkbox" id="edit-nwd"><span class="sl"></span></label>
+      Non-working day
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="saveEdit()"><i class="ti ti-check"></i> Save changes</button>
+      <button class="btn ghost" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="del-modal">
+  <div class="modal del-modal">
+    <div class="del-icon"><i class="ti ti-trash"></i></div>
+    <div class="del-title">Delete entry?</div>
+    <div class="del-sub">This action cannot be undone.</div>
+    <div class="del-actions">
+      <button class="btn primary" style="background:var(--red);border-color:var(--red)" onclick="confirmDelete()">Delete</button>
+      <button class="btn ghost" onclick="document.getElementById('del-modal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SCOPES='https://www.googleapis.com/auth/drive.file';
+const DISCO='https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+let CLIENT_ID='',DATA_FILENAME='team_stats_data.json';
+let tokenClient,gapiReady=false,gsiReady=false;
+let driveFileId=null,pendingDeleteId=null;
+let db={reps:[],entries:[],goals:{}};
+let fuVal='yes',efuVal='yes',activeTab='log';
+
+const METRICS=[
+  {key:'dials',      label:'Dials',                        fmt:v=>v.toLocaleString()},
+  {key:'convos',     label:'New conversations (>10 mins)', fmt:v=>v.toLocaleString()},
+  {key:'quotedHH',   label:'Total quoted households',      fmt:v=>v.toLocaleString()},
+  {key:'soldHH',     label:'Total households sold',        fmt:v=>v.toLocaleString()},
+  {key:'premium',    label:'Total premium sold',           fmt:v=>'$'+v.toLocaleString()},
+  {key:'lifeconvos', label:'Total life conversations',     fmt:v=>v.toLocaleString()},
+  {key:'lifeappts',  label:'Total life appointments',      fmt:v=>v.toLocaleString()},
+];
+
+const today=()=>new Date().toISOString().slice(0,10);
+const weekStart=()=>{const d=new Date();d.setDate(d.getDate()-d.getDay());return d.toISOString().slice(0,10)};
+const monthStart=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`};
+const repName=id=>{const r=db.reps.find(x=>x.id===id);return r?r.first+' '+r.last:'Unknown'};
+const initials=id=>{const r=db.reps.find(x=>x.id===id);return r?(r.first[0]+r.last[0]).toUpperCase():'??'};
+const fmtDate=d=>{if(!d)return'';const[y,m,dy]=d.split('-');return`${m}/${dy}/${y}`};
+const clamp=(v,mn=0,mx=100)=>Math.min(mx,Math.max(mn,v));
+const getVal=(e,k)=>+e[k]||0;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+// ── ALERTS ───────────────────────────────────────────────────────────────────
+function showAlert(msg,type='ok'){
+  const icons={ok:'check',err:'x',info:'info-circle'};
+  const a=document.getElementById('alert-area');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<i class="ti ti-${icons[type]||'check'}"></i> ${msg}`;
+  a.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+function log(msg){
+  const b=document.getElementById('setup-log');
+  b.style.display='block';
+  b.innerHTML+=`<div>> ${msg}</div>`;
+  b.scrollTop=b.scrollHeight;
+}
+function setupAlert(msg,type='err'){
+  const el=document.getElementById('setup-alert');
+  el.className='setup-alert '+type;
+  el.innerHTML=msg;
+  el.style.display='block';
+}
+function setSyncStatus(state,label){
+  document.getElementById('sync-dot').className='sync-dot '+state;
+  document.getElementById('sync-label').textContent=label;
+}
+
+// ── GOOGLE AUTH ───────────────────────────────────────────────────────────────
+function startConnect(){
+  CLIENT_ID=document.getElementById('setup-client-id').value.trim();
+  DATA_FILENAME=document.getElementById('setup-filename').value.trim()||'team_stats_data.json';
+  if(!CLIENT_ID){setupAlert('Please paste your Client ID first.');return;}
+  if(!CLIENT_ID.includes('.apps.googleusercontent.com')){setupAlert('That doesn\'t look like a valid Client ID.');return;}
+  localStorage.setItem('ts_cid',CLIENT_ID);
+  localStorage.setItem('ts_fn',DATA_FILENAME);
+  const btn=document.getElementById('connect-btn');
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader"></i> Connecting…';
+  document.getElementById('setup-alert').style.display='none';
+  log('Saved Client ID. Loading Google libraries…');
+  loadGoogleLibs();
+}
+
+function loadGoogleLibs(){
+  const s1=document.createElement('script');s1.src='https://apis.google.com/js/api.js';
+  s1.onerror=()=>{log('ERROR: Could not load Google API.');setupAlert('Could not load Google APIs — check your internet connection.');resetBtn();};
+  s1.onload=()=>{
+    log('GAPI loaded. Initialising…');
+    gapi.load('client',async()=>{
+      try{await gapi.client.init({discoveryDocs:[DISCO]});log('GAPI ready.');gapiReady=true;maybeAuth();}
+      catch(e){log('GAPI init error: '+e.message);setupAlert('Google API error: '+e.message);resetBtn();}
+    });
+  };
+  document.head.appendChild(s1);
+  const s2=document.createElement('script');s2.src='https://accounts.google.com/gsi/client';
+  s2.onerror=()=>log('ERROR: Could not load Sign-In script.');
+  s2.onload=()=>{
+    log('GSI loaded. Setting up sign-in…');
+    try{
+      tokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:CLIENT_ID,scope:SCOPES,
+        callback:async resp=>{
+          if(resp.error){
+            log('Auth error: '+resp.error+' — '+resp.error_description);
+            setupAlert('Sign-in failed: '+(resp.error_description||resp.error)+'<br>Make sure <strong>http://localhost:8080</strong> is in your OAuth Authorized JavaScript origins.');
+            resetBtn();return;
+          }
+          log('Signed in. Accessing Drive…');
+          await loadOrCreate();
+        }
+      });
+      log('Ready. Opening sign-in popup…');
+      gsiReady=true;maybeAuth();
+    }catch(e){log('GSI error: '+e.message);setupAlert('Sign-in error: '+e.message);resetBtn();}
+  };
+  document.head.appendChild(s2);
+}
+
+function maybeAuth(){if(gapiReady&&gsiReady)tokenClient.requestAccessToken({prompt:'consent'});}
+function resetBtn(){const b=document.getElementById('connect-btn');b.disabled=false;b.innerHTML='<i class="ti ti-brand-google"></i> Connect to Google Drive';}
+function signOut(){const t=gapi.client.getToken();if(t)google.accounts.oauth2.revoke(t.access_token,()=>{});gapi.client.setToken('');localStorage.removeItem('ts_cid');localStorage.removeItem('ts_fn');location.reload();}
+
+// ── DRIVE ─────────────────────────────────────────────────────────────────────
+async function loadOrCreate(){
+  setSyncStatus('spin','Connecting…');
+  try{
+    const res=await gapi.client.drive.files.list({q:`name='${DATA_FILENAME}' and trashed=false`,spaces:'drive',fields:'files(id,name)'});
+    const files=res.result.files;
+    if(files&&files.length>0){driveFileId=files[0].id;log('Found file '+driveFileId+'. Loading…');await pullFromDrive();}
+    else{log('No file found. Creating new one…');await pushToDrive();}
+    log('Connected! Launching app…');
+    showMainApp();
+  }catch(e){log('Drive error: '+e.message);setSyncStatus('err','Failed');setupAlert('Drive error: '+e.message);resetBtn();}
+}
+
+async function pullFromDrive(){
+  setSyncStatus('spin','Syncing…');
+  try{
+    const res=await gapi.client.drive.files.get({fileId:driveFileId,alt:'media'});
+    const raw=res.result;
+    const data=typeof raw==='string'?JSON.parse(raw):raw;
+    db={reps:data.reps||[],entries:data.entries||[],goals:data.goals||{}};
+    setSyncStatus('ok','Synced · '+new Date().toLocaleTimeString());
+  }catch(e){setSyncStatus('err','Sync failed');console.error(e);}
+}
+
+async function pushToDrive(){
+  setSyncStatus('spin','Saving…');
+  const content=JSON.stringify(db,null,2);
+  const token=gapi.client.getToken().access_token;
+  try{
+    if(!driveFileId){
+      const form=new FormData();
+      form.append('metadata',new Blob([JSON.stringify({name:DATA_FILENAME,mimeType:'application/json'})],{type:'application/json'}));
+      form.append('file',new Blob([content],{type:'application/json'}));
+      const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:'Bearer '+token},body:form});
+      const j=await r.json();if(j.error)throw new Error(j.error.message);
+      driveFileId=j.id;
+    }else{
+      const r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:content});
+      const j=await r.json();if(j.error)throw new Error(j.error.message);
+    }
+    setSyncStatus('ok','Saved · '+new Date().toLocaleTimeString());
+  }catch(e){setSyncStatus('err','Save failed');showAlert('Save failed: '+e.message,'err');}
+}
+
+async function save(){await pushToDrive();}
+async function syncNow(){if(!driveFileId){showAlert('Not connected.','err');return;}await pullFromDrive();refreshTab();showAlert('Refreshed from Google Drive.');}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function showMainApp(){
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
+  document.getElementById('log-date').value=today();
+  const ma=new Date();ma.setDate(ma.getDate()-30);
+  document.getElementById('rpt-from').value=ma.toISOString().slice(0,10);
+  document.getElementById('rpt-to').value=today();
+  renderRepPickers();renderRepList();
+  setInterval(async()=>{await pullFromDrive();refreshTab();},60000);
+}
+
+window.addEventListener('load',()=>{
+  const cid=localStorage.getItem('ts_cid');
+  if(cid){
+    CLIENT_ID=cid;DATA_FILENAME=localStorage.getItem('ts_fn')||'team_stats_data.json';
+    document.getElementById('setup-client-id').value=cid;
+    document.getElementById('setup-filename').value=DATA_FILENAME;
+    const btn=document.getElementById('connect-btn');btn.disabled=true;btn.innerHTML='<i class="ti ti-loader"></i> Reconnecting…';
+    loadGoogleLibs();
+  }
+});
+
+function sw(t){
+  activeTab=t;
+  document.querySelectorAll('.nav-tab').forEach((b,i)=>b.classList.toggle('active',['log','team','lb','goals','reports'][i]===t));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+t).classList.add('active');
+  refreshTab();
+}
+function refreshTab(){
+  if(activeTab==='lb')renderLB();
+  if(activeTab==='goals')renderGoals();
+  if(activeTab==='reports'){renderRepPickers();loadReport();}
+  if(activeTab==='log')renderRepPickers();
+  if(activeTab==='team')renderRepList();
+}
+
+// ── TOGGLES ───────────────────────────────────────────────────────────────────
+function setFU(v){fuVal=v;document.getElementById('fu-yes').classList.toggle('sel',v==='yes');document.getElementById('fu-no').classList.toggle('sel',v==='no');}
+function setEFU(v){efuVal=v;document.getElementById('efu-yes').classList.toggle('sel',v==='yes');document.getElementById('efu-no').classList.toggle('sel',v==='no');}
+
+// ── TEAM ──────────────────────────────────────────────────────────────────────
+function renderRepPickers(){
+  ['log-rep','rpt-rep'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    const prev=sel.value;
+    sel.innerHTML=(id==='rpt-rep'?'<option value="">All reps</option>':'')+db.reps.map(r=>`<option value="${r.id}">${r.first} ${r.last}</option>`).join('');
+    if(prev)sel.value=prev;
+  });
+}
+function renderRepList(){
+  const el=document.getElementById('rep-list');
+  if(!db.reps.length){el.innerHTML='<div class="empty-state">No team members yet.</div>';return;}
+  el.innerHTML='<div class="member-list">'+db.reps.map(r=>{
+    const cnt=db.entries.filter(e=>e.repId===r.id).length;
+    return`<div class="member-row">
+      <div class="avatar">${(r.first[0]+r.last[0]).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div class="member-name">${r.first} ${r.last} <span class="role-pill ${r.role||'rep'}">${r.role==='admin'?'Admin':'Rep'}</span></div>
+        <div class="member-meta">${r.email?r.email+' · ':''}${cnt} entr${cnt===1?'y':'ies'}</div>
+      </div>
+      <button class="icon-btn" onclick="deleteRep('${r.id}')"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join('')+'</div>';
+}
+async function addRep(){
+  const f=document.getElementById('rep-first').value.trim(),l=document.getElementById('rep-last').value.trim();
+  if(!f||!l){showAlert('Enter first and last name.','err');return;}
+  db.reps.push({id:uid(),first:f,last:l,role:document.getElementById('rep-role').value,email:document.getElementById('rep-email').value.trim()});
+  await save();renderRepList();renderRepPickers();
+  ['rep-first','rep-last','rep-email'].forEach(id=>document.getElementById(id).value='');
+  showAlert(`${f} ${l} added.`);
+}
+async function deleteRep(id){
+  if(!confirm('Remove this team member?'))return;
+  db.reps=db.reps.filter(r=>r.id!==id);
+  await save();renderRepList();renderRepPickers();showAlert('Team member removed.');
+}
+
+// ── LOG ───────────────────────────────────────────────────────────────────────
+function clearForm(){
+  ['log-dials','log-convos','log-quotedHH','log-soldHH','log-premium','log-lifeconvos','log-lifeappts','log-hh','log-mm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('log-nwd').checked=false;setFU('yes');
+}
+async function submitLog(){
+  const repId=document.getElementById('log-rep').value,date=document.getElementById('log-date').value;
+  if(!repId){showAlert('Select a rep.','err');return;}
+  if(!date){showAlert('Pick a date.','err');return;}
+  db.entries.push({id:uid(),repId,date,
+    dials:parseInt(document.getElementById('log-dials').value)||0,
+    convos:parseInt(document.getElementById('log-convos').value)||0,
+    quotedHH:parseInt(document.getElementById('log-quotedHH').value)||0,
+    soldHH:parseInt(document.getElementById('log-soldHH').value)||0,
+    premium:parseFloat(document.getElementById('log-premium').value)||0,
+    lifeconvos:parseInt(document.getElementById('log-lifeconvos').value)||0,
+    lifeappts:parseInt(document.getElementById('log-lifeappts').value)||0,
+    hh:parseInt(document.getElementById('log-hh').value)||0,
+    mm:parseInt(document.getElementById('log-mm').value)||0,
+    followups:fuVal,nwd:document.getElementById('log-nwd').checked
+  });
+  await save();clearForm();showAlert(`Logged for ${repName(repId)} on ${fmtDate(date)}.`);
+}
+
+// ── LEADERBOARD ───────────────────────────────────────────────────────────────
+function renderLB(){
+  const mk=document.getElementById('lb-metric').value,period=document.getElementById('lb-period').value;
+  const ws=weekStart(),ms=monthStart();
+  const mObj=METRICS.find(m=>m.key===mk)||METRICS[0];
+  const inP=e=>{if(period==='week')return e.date>=ws;if(period==='month')return e.date>=ms;return true;};
+  const prevP=e=>{
+    if(period==='week'){const pw=new Date(ws);pw.setDate(pw.getDate()-7);const pws=pw.toISOString().slice(0,10);return e.date>=pws&&e.date<ws;}
+    if(period==='month'){const pm=new Date(ms);pm.setMonth(pm.getMonth()-1);return e.date>=pm.toISOString().slice(0,10)&&e.date<ms;}
+    return false;
+  };
+  if(!db.reps.length){document.getElementById('lb-list').innerHTML='<div class="empty-state">No team members yet.</div>';return;}
+  const ranked=db.reps.map(r=>({...r,
+    val:db.entries.filter(e=>e.repId===r.id&&inP(e)&&!e.nwd).reduce((s,e)=>s+getVal(e,mk),0),
+    prev:db.entries.filter(e=>e.repId===r.id&&prevP(e)&&!e.nwd).reduce((s,e)=>s+getVal(e,mk),0)
+  })).sort((a,b)=>b.val-a.val);
+  const medals=['1st','2nd','3rd'];
+  const trend=(cur,prev)=>{
+    if(period==='all')return'';const d=cur-prev;
+    if(d>0)return`<span class="trend-up"><i class="ti ti-arrow-up" style="font-size:11px"></i> ${mObj.fmt(d)}</span>`;
+    if(d<0)return`<span class="trend-dn"><i class="ti ti-arrow-down" style="font-size:11px"></i> ${mObj.fmt(Math.abs(d))}</span>`;
+    return`<span class="trend-eq">No change</span>`;
+  };
+  document.getElementById('lb-list').innerHTML='<div class="lb-table">'+ranked.map((r,i)=>
+    `<div class="lb-row">
+      <div class="lb-rank ${i<3?'r'+(i+1):''}">${medals[i]||i+1}</div>
+      <div class="avatar">${initials(r.id)}</div>
+      <div class="lb-info"><div class="lb-name">${r.first} ${r.last}</div><div class="lb-trend">${trend(r.val,r.prev)}</div></div>
+      <div class="lb-score"><div class="val">${mObj.fmt(r.val)}</div><div class="lbl">${mObj.label}</div></div>
+    </div>`).join('')+'</div>';
+}
+
+// ── GOALS ─────────────────────────────────────────────────────────────────────
+function renderGoals(){
+  METRICS.forEach(m=>['w','m'].forEach(p=>{
+    const el=document.getElementById(`g${p}-${m.key}`);
+    if(el&&db.goals[p+'-'+m.key])el.value=db.goals[p+'-'+m.key];
+  }));
+  renderGoalProgress();
+}
+function renderGoalProgress(){
+  ['w','m'].forEach(p=>{
+    const floor=p==='w'?weekStart():monthStart();
+    const rel=db.entries.filter(e=>e.date>=floor&&!e.nwd);
+    const rows=METRICS.map(m=>{
+      const goal=parseFloat(db.goals[p+'-'+m.key])||0;
+      const actual=rel.reduce((s,e)=>s+getVal(e,m.key),0);
+      const pct=goal>0?Math.round(clamp((actual/goal)*100)):0;
+      const cls=pct>=100?'ok':pct>=60?'warn':'dan';
+      return`<div class="prog-item">
+        <div class="prog-label-row">
+          <span class="prog-label">${m.label}</span>
+          <span class="prog-nums">${m.fmt(actual)} <span>/ ${goal>0?m.fmt(goal):'—'}</span>${goal>0?` &nbsp;${pct}%`:''}</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
+      </div>`;
+    }).join('');
+    document.getElementById(`goal-prog-${p}`).innerHTML=rows||'<div class="empty-state" style="padding:1rem 0">Set targets above to see progress.</div>';
+  });
+  METRICS.forEach(m=>['w','m'].forEach(p=>{
+    const floor=p==='w'?weekStart():monthStart();
+    const act=db.entries.filter(e=>e.date>=floor&&!e.nwd).reduce((s,e)=>s+getVal(e,m.key),0);
+    const g=parseFloat(db.goals[p+'-'+m.key])||0;
+    const el=document.getElementById(`g${p}-${m.key}-pct`);
+    if(el)el.textContent=g>0?Math.round(clamp((act/g)*100))+'%':'';
+  }));
+}
+async function saveGoals(){
+  METRICS.forEach(m=>['w','m'].forEach(p=>{
+    const el=document.getElementById(`g${p}-${m.key}`);
+    if(el)db.goals[p+'-'+m.key]=parseFloat(el.value)||0;
+  }));
+  await save();showAlert('Targets saved.');renderGoalProgress();
+}
+
+// ── REPORTS ───────────────────────────────────────────────────────────────────
+function getFiltered(){
+  const rf=document.getElementById('rpt-rep').value;
+  const from=document.getElementById('rpt-from').value;
+  const to=document.getElementById('rpt-to').value;
+  return db.entries.filter(e=>{
+    if(rf&&e.repId!==rf)return false;
+    if(from&&e.date<from)return false;
+    if(to&&e.date>to)return false;
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+}
+
+function loadReport(){
+  const filtered=getFiltered();
+  const active=filtered.filter(e=>!e.nwd);
+  const totalMins=active.reduce((s,e)=>s+(+e.hh||0)*60+(+e.mm||0),0);
+  const summaries=[
+    {lbl:'Dials',val:active.reduce((s,e)=>s+getVal(e,'dials'),0).toLocaleString()},
+    {lbl:'Conversations',val:active.reduce((s,e)=>s+getVal(e,'convos'),0).toLocaleString()},
+    {lbl:'Quoted HH',val:active.reduce((s,e)=>s+getVal(e,'quotedHH'),0).toLocaleString()},
+    {lbl:'HH Sold',val:active.reduce((s,e)=>s+getVal(e,'soldHH'),0).toLocaleString()},
+    {lbl:'Premium Sold',val:'$'+active.reduce((s,e)=>s+getVal(e,'premium'),0).toLocaleString()},
+    {lbl:'Life Convos',val:active.reduce((s,e)=>s+getVal(e,'lifeconvos'),0).toLocaleString()},
+    {lbl:'Life Appts',val:active.reduce((s,e)=>s+getVal(e,'lifeappts'),0).toLocaleString()},
+    {lbl:'Talk Time',val:Math.floor(totalMins/60)+'h '+totalMins%60+'m'},
+  ];
+  document.getElementById('rpt-metrics').innerHTML=summaries.map(m=>
+    `<div class="metric-cell"><div class="metric-val">${m.val}</div><div class="metric-lbl">${m.lbl}</div></div>`
+  ).join('');
+  if(!filtered.length){document.getElementById('rpt-table').innerHTML='<div class="empty-state">No entries match your filters.</div>';return;}
+  document.getElementById('rpt-table').innerHTML=
+    `<table class="data-table">
+      <thead><tr>
+        <th>Date</th><th>Rep</th><th>Dials</th><th>Convos</th><th>Quoted HH</th><th>HH Sold</th><th>Premium</th><th>Life Convos</th><th>Life Appts</th><th>Talk Time</th><th>Follow-Ups</th><th></th>
+      </tr></thead>
+      <tbody>`+
+    filtered.map(e=>`<tr>
+      <td>${fmtDate(e.date)}</td>
+      <td>${repName(e.repId)}</td>
+      <td>${e.dials||0}</td>
+      <td>${e.convos||0}</td>
+      <td>${e.quotedHH||0}</td>
+      <td>${e.soldHH||0}</td>
+      <td>$${(+e.premium||0).toLocaleString()}</td>
+      <td>${e.lifeconvos||0}</td>
+      <td>${e.lifeappts||0}</td>
+      <td>${e.hh||0}:${String(e.mm||0).padStart(2,'0')}</td>
+      <td>${e.nwd?'<span class="status-pill nwd">NWD</span>':`<span class="status-pill ${e.followups}">${e.followups}</span>`}</td>
+      <td style="white-space:nowrap">
+        <button class="icon-btn" style="color:var(--text3)" onclick="openEdit('${e.id}')"><i class="ti ti-edit"></i></button>
+        <button class="icon-btn" onclick="promptDelete('${e.id}')"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`).join('')+
+    '</tbody></table>';
+}
+
+function exportCSV(){
+  const filtered=getFiltered();
+  const hdr='Date,Rep,Dials,New Conversations (>10 mins),Total Quoted Households,Total Households Sold,Total Premium Sold,Total Life Conversations,Total Life Appointments,Talk Time,Follow-Ups,Non-Working Day\n';
+  const rows=filtered.map(e=>[e.date,repName(e.repId),e.dials||0,e.convos||0,e.quotedHH||0,e.soldHH||0,e.premium||0,e.lifeconvos||0,e.lifeappts||0,`${e.hh||0}:${String(e.mm||0).padStart(2,'0')}`,e.followups,e.nwd?'Yes':'No'].join(',')).join('\n');
+  const url=URL.createObjectURL(new Blob([hdr+rows],{type:'text/csv'}));
+  const a=document.createElement('a');a.href=url;a.download='team_stats_export.csv';a.click();URL.revokeObjectURL(url);
+  showAlert('CSV exported.');
+}
+
+function exportExcel(){
+  const filtered=getFiltered();
+  if(!filtered.length){showAlert('No data to export.','err');return;}
+
+  // Summary sheet data
+  const active=filtered.filter(e=>!e.nwd);
+  const totalMins=active.reduce((s,e)=>s+(+e.hh||0)*60+(+e.mm||0),0);
+  const summaryData=[
+    ['Team Stats Report',''],
+    ['Generated',new Date().toLocaleDateString()],
+    [''],
+    ['SUMMARY',''],
+    ['Metric','Total'],
+    ['Dials',active.reduce((s,e)=>s+getVal(e,'dials'),0)],
+    ['New Conversations (>10 mins)',active.reduce((s,e)=>s+getVal(e,'convos'),0)],
+    ['Total Quoted Households',active.reduce((s,e)=>s+getVal(e,'quotedHH'),0)],
+    ['Total Households Sold',active.reduce((s,e)=>s+getVal(e,'soldHH'),0)],
+    ['Total Premium Sold ($)',active.reduce((s,e)=>s+getVal(e,'premium'),0)],
+    ['Total Life Conversations',active.reduce((s,e)=>s+getVal(e,'lifeconvos'),0)],
+    ['Total Life Appointments',active.reduce((s,e)=>s+getVal(e,'lifeappts'),0)],
+    ['Talk Time (mins)',totalMins],
+    ['Active Days',active.length],
+    ['Non-Working Days',filtered.length-active.length],
+  ];
+
+  // Detail sheet data
+  const detailHeaders=['Date','Rep','Dials','New Conversations (>10 mins)','Total Quoted Households','Total Households Sold','Total Premium Sold ($)','Total Life Conversations','Total Life Appointments','Talk Time','Follow-Ups Completed','Non-Working Day'];
+  const detailRows=filtered.map(e=>[
+    e.date, repName(e.repId),
+    e.dials||0, e.convos||0, e.quotedHH||0, e.soldHH||0, e.premium||0,
+    e.lifeconvos||0, e.lifeappts||0,
+    `${e.hh||0}:${String(e.mm||0).padStart(2,'0')}`,
+    e.followups==='yes'?'Yes':'No',
+    e.nwd?'Yes':'No'
+  ]);
+
+  // Per-rep summary
+  const repHeaders=['Rep','Role','Dials','Conversations','Quoted HH','HH Sold','Premium Sold ($)','Life Convos','Life Appts'];
+  const repRows=db.reps.map(r=>{
+    const re=active.filter(e=>e.repId===r.id);
+    return[
+      r.first+' '+r.last, r.role==='admin'?'Admin':'Rep',
+      re.reduce((s,e)=>s+getVal(e,'dials'),0),
+      re.reduce((s,e)=>s+getVal(e,'convos'),0),
+      re.reduce((s,e)=>s+getVal(e,'quotedHH'),0),
+      re.reduce((s,e)=>s+getVal(e,'soldHH'),0),
+      re.reduce((s,e)=>s+getVal(e,'premium'),0),
+      re.reduce((s,e)=>s+getVal(e,'lifeconvos'),0),
+      re.reduce((s,e)=>s+getVal(e,'lifeappts'),0),
+    ];
+  });
+
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Summary
+  const ws1=XLSX.utils.aoa_to_sheet(summaryData);
+  ws1['!cols']=[{wch:35},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Summary');
+
+  // Sheet 2: Detail
+  const ws2=XLSX.utils.aoa_to_sheet([detailHeaders,...detailRows]);
+  ws2['!cols']=[{wch:12},{wch:20},{wch:8},{wch:28},{wch:24},{wch:22},{wch:22},{wch:22},{wch:22},{wch:12},{wch:20},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Daily Detail');
+
+  // Sheet 3: Per-rep totals
+  const ws3=XLSX.utils.aoa_to_sheet([repHeaders,...repRows]);
+  ws3['!cols']=[{wch:22},{wch:10},{wch:8},{wch:16},{wch:14},{wch:12},{wch:20},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Rep Totals');
+
+  const fname=`team_stats_${today()}.xlsx`;
+  XLSX.writeFile(wb,fname);
+  showAlert('Excel file exported — '+fname);
+}
+
+// ── EDIT / DELETE ─────────────────────────────────────────────────────────────
+function openEdit(id){
+  const e=db.entries.find(x=>x.id===id);if(!e)return;
+  document.getElementById('edit-id').value=id;
+  document.getElementById('edit-date').value=e.date;
+  ['dials','convos','quotedHH','soldHH','premium','lifeconvos','lifeappts','hh','mm'].forEach(k=>{
+    const el=document.getElementById('edit-'+k);if(el)el.value=e[k]||0;
+  });
+  document.getElementById('edit-nwd').checked=!!e.nwd;
+  efuVal=e.followups||'yes';setEFU(efuVal);
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEdit(){document.getElementById('edit-modal').classList.remove('open');}
+async function saveEdit(){
+  const id=document.getElementById('edit-id').value;
+  const idx=db.entries.findIndex(x=>x.id===id);if(idx<0)return;
+  db.entries[idx]={...db.entries[idx],
+    date:document.getElementById('edit-date').value,
+    dials:parseInt(document.getElementById('edit-dials').value)||0,
+    convos:parseInt(document.getElementById('edit-convos').value)||0,
+    quotedHH:parseInt(document.getElementById('edit-quotedHH').value)||0,
+    soldHH:parseInt(document.getElementById('edit-soldHH').value)||0,
+    premium:parseFloat(document.getElementById('edit-premium').value)||0,
+    lifeconvos:parseInt(document.getElementById('edit-lifeconvos').value)||0,
+    lifeappts:parseInt(document.getElementById('edit-lifeappts').value)||0,
+    hh:parseInt(document.getElementById('edit-hh').value)||0,
+    mm:parseInt(document.getElementById('edit-mm').value)||0,
+    followups:efuVal,nwd:document.getElementById('edit-nwd').checked
+  };
+  await save();closeEdit();showAlert('Entry updated.');loadReport();
+}
+function promptDelete(id){pendingDeleteId=id;document.getElementById('del-modal').classList.add('open');}
+async function confirmDelete(){
+  if(!pendingDeleteId)return;
+  db.entries=db.entries.filter(x=>x.id!==pendingDeleteId);
+  pendingDeleteId=null;
+  document.getElementById('del-modal').classList.remove('open');
+  await save();showAlert('Entry deleted.');loadReport();
+}
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+});
+</script>
+</body>
+</html>
